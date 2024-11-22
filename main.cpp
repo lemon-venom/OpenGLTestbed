@@ -19,23 +19,23 @@
 #define RETURN_IF_GL_ERROR(F) RETURN_IF_GL_ERROR2("Function " F " failed with error")
 #define RETURN_IF_GL_ERROR2(M) { GLenum error = glGetError(); if (error != GL_NO_ERROR) { std::cout<< M ": " << gluErrorString(error) << std::endl; return false; } }
 
-SDL_Window*		window;
-SDL_Surface*	screen;
-SDL_Renderer*	sdlRenderer;
-SDL_GLContext	openGlContext;
+SDL_Window*     window;
+SDL_Surface*    screen;
+SDL_Renderer*   sdlRenderer;
+SDL_GLContext   openGlContext;
 
-int				screenWidth = 1280;
-int				screenHeight = 720;
+int             screenWidth = 1280;
+int             screenHeight = 720;
 
-glm::mat4		projectionMatrix;
-GLint			projectionMatrixLocation;
+glm::mat4       projectionMatrix;
+GLint           projectionMatrixLocation;
 
-glm::mat4		modelViewMatrix;
-GLint			modelViewMatrixLocation;
+glm::mat4       modelViewMatrix;
+GLint           modelViewMatrixLocation;
 
-GLint			texUnitLocation;
+GLint           texUnitLocation;
 
-GLuint			textureId;
+GLuint          textureId;
 
 struct VertexPos3D
 {
@@ -51,14 +51,14 @@ struct VertexData3D
 
 struct Shader
 {
-	GLuint						programId;
-	GLuint						vertexBufferId;
-	GLuint						indexBufferId;
-	int							vertexBufferSize;
-	std::vector<VertexData3D>	vertexData;
-	std::vector<GLuint>			indexData;
-	GLuint						texturedQuadVao;
-	GLint						vertexPos2dLocation;
+	GLuint                      programId;
+	GLuint                      vertexBufferId;
+	GLuint                      indexBufferId;
+	int                         vertexBufferSize;
+	std::vector<VertexData3D>   vertexData;
+	std::vector<GLuint>         indexData;
+	GLuint                      texturedQuadVao;
+	GLint                       vertexPos2dLocation;
 };
 
 Shader shader;
@@ -143,9 +143,9 @@ bool createTexture()
 
 	// 3x1 texture with a red, green, and blue pixel.
 	GLint buffer[12] = { 
-		glintMax, 0, 0, glintMax, // Red
-		0, glintMax, 0, glintMax, // Green
-		0, 0, glintMax, glintMax  // Blue
+		glintMax, 0,        0,        glintMax, // Red
+		0,        glintMax, 0,        glintMax, // Green
+		0,        0,        glintMax, glintMax  // Blue
 	};
 
 	bool texLoaded = loadBufferIntoTexture(buffer, 12, 3, 1, textureId);
@@ -580,9 +580,9 @@ void updateVbo()
 
 int main(int argc, char* argv[])
 {
-	if (!initializeScreen())	{ std::cout << "OpenGL Initialization Failed"	<< std::endl; }
-	if (!initShaders())			{ std::cout << "Shaders Initialization Failed"	<< std::endl; }
-	if (!createTexture())		{ std::cout << "Texture Creation Failed"		<< std::endl; }
+	if (!initializeScreen()) { std::cout << "OpenGL Initialization Failed"  << std::endl; }
+	if (!initShaders())      { std::cout << "Shaders Initialization Failed" << std::endl; }
+	if (!createTexture())    { std::cout << "Texture Creation Failed"       << std::endl; }
 	 
 	bool quit = false;
 
