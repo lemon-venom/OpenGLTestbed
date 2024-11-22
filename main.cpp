@@ -190,7 +190,7 @@ in vec3 vertexPos3D;
 
 void main() 
 {  
-	gl_Position = projectionMatrix * modelViewMatrix * vec4(vertexPos3D.x, vertexPos3D.y, vertexPos3D.z, 1.0);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(vertexPos3D.x, vertexPos3D.y, vertexPos3D.z, 1.0);
 }
 )V0G0N";
 
@@ -206,20 +206,20 @@ in vec4 gl_FragCoord;
 
 void main() 
 {
-	// Coordinates of the red pixel.
-	vec2 texCoords = vec2(0, 0);
+    // Coordinates of the red pixel.
+    vec2 texCoords = vec2(0, 0);
 
     vec4 textureSample = texture(textureUnit, texCoords);
 
-	fragColor = textureSample;
+    fragColor = textureSample;
 
 	if (textureSample.r == 2147483584 && textureSample.r == 2147483647)
-	{
+    {
         vec4 blue = vec4(0.0, 0.0, 1.0, 1.0); 
 
         // Mix with blue to provide visual output that the case was hit.
         fragColor = mix(fragColor, blue, 0.5);
-	}
+    }
 }
 )V0G0N";
 
