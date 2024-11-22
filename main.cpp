@@ -583,7 +583,7 @@ int main(int argc, char* argv[])
 	if (!initializeScreen())	{ std::cout << "OpenGL Initialization Failed"	<< std::endl; }
 	if (!initShaders())			{ std::cout << "Shaders Initialization Failed"	<< std::endl; }
 	if (!createTexture())		{ std::cout << "Texture Creation Failed"		<< std::endl; }
-
+	 
 	bool quit = false;
 
 	while (quit == false)
