@@ -213,7 +213,7 @@ void main()
 
     fragColor = textureSample;
 
-	if (textureSample.r == 2147483584 && textureSample.r == 2147483647)
+    if (textureSample.r == 2147483584 && textureSample.r == 2147483647)
     {
         vec4 blue = vec4(0.0, 0.0, 1.0, 1.0); 
 
