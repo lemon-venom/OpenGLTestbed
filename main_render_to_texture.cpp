@@ -316,7 +316,7 @@ void main()
     std::string fragmentShaderCode = R"V0G0N(
 #version 330 core
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 in vec4 gl_FragCoord;
 
@@ -811,7 +811,7 @@ int main(int argc, char* argv[])
             //glBindFramebuffer(GL_FRAMEBUFFER, 0); // Render to screen
             glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId); // Render to texture
 
-            //glViewport(0, 0, screenWidth, screenHeight);
+            //glViewport(0, 0, screenWidth, screenHeight); already set
 
             glUseProgram(shader.programId);
 
