@@ -807,7 +807,9 @@ int main(int argc, char* argv[])
 
         if (vertexCount > 0)
         {
-            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId);
+
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0); // Render to screen
+            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId); // Render to texture
 
             //glViewport(0, 0, screenWidth, screenHeight);
 
@@ -817,7 +819,7 @@ int main(int argc, char* argv[])
 
             //glActiveTexture(GL_TEXTURE0);
 
-            glBindTexture(GL_TEXTURE_2D, silhouetteTextureId);
+            //glBindTexture(GL_TEXTURE_2D, silhouetteTextureId);
 
             glBindVertexArray(shader.texturedQuadVao);
 
