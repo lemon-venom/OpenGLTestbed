@@ -1,3 +1,5 @@
+#if 0 // toggle on/off
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -217,7 +219,7 @@ void main()
     {
         vec4 blue = vec4(0.0, 0.0, 1.0, 1.0); 
 
-        // Mix with blue to provide visual output that the case was hit.
+            // Mix with blue to provide visual output that the case was hit.
         fragColor = mix(fragColor, blue, 0.5);
     }
 }
@@ -641,3 +643,5 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+
+#endif
