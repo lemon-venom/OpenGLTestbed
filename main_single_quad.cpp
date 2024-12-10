@@ -1,4 +1,4 @@
-#if 0
+#if 1
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -13,9 +13,6 @@
 #include <GL/freeglut.h>
 #include <GL/gl.h>
 #include <GL/glu.h>
-
-#include <IL/il.h>
-#include <IL/ilu.h>
 
 #include "SDL.h"
 
@@ -38,9 +35,6 @@ GLint           projectionMatrixLocation;
 
 glm::mat4       modelViewMatrix;
 GLint           modelViewMatrixLocation;
-
-GLuint          frameBufferId = 0;
-GLuint          silhouetteTextureId = 0;
 
 
 struct VertexPos3D
@@ -85,96 +79,8 @@ struct Vertex2
     float y = 0.0f;
 };
 
-// Start at full blue for groups.
-ColorRgba groupColor{ 0.0f, 0.0f, 1.0f, 1.0f };
-
-uint32_t colorCounter = 0;
-
-// From a counter value derive a color visually distinct to the human eye
-// compared to the other colors nearby in the permutation.
-uint32_t getGroupColor(uint32_t counter)
+void addQuad(float x, float y, float w, float h)
 {
-    // Determine which component or components will be used.
-    // 7 combinations, not 8, because using no components doesn't make sense.
-
-    // R     | 1 0 0   4
-    //   G   | 0 1 0   2
-    //     B | 0 0 1   1
-    // R G   | 1 1 0   6
-    // R   B | 1 0 1   5
-    //   G B | 0 1 1   3
-    // R G B | 1 1 1   7
-
-    int components = (counter % 7) + 1;
-
-    // Get the component bit, and shift it into bit position 0, then do a lshift to shift it into bit position 8.
-    // After that cast to a signed char and shift right by 7 to do an arithmetic shift back into position 0, filling 
-    // all bits with the least significant bit. Then, recast it back to an unsigned 8 bit int to remove the leading 1's
-    // that get added in a two's compliment represenation of signed integers, and concatenate it onto the component mask
-    // by casting it back to a unsigned 32 bit int. Bitwise and the components mask with the component value, which is a
-    // counter that counts by increments of ((256 / 8) + 1), ((256 / 4) + 1), and ((256 / 2) + 1), and will overflow
-    // because they are stored in a uint8_t. This is so that the different color component values don't increment at
-    // the same strides.  Also, they will count down from 255, so that the first color isn't full black.
-
-    uint32_t blue  = ((uint32_t)((uint8_t)((int8_t)( (components & 0x1) << 7) >> 7)       & (255 - (uint8_t)(counter * 33)))  << 8 );
-    uint32_t green = ((uint32_t)((uint8_t)((int8_t)(((components & 0x2) >> 1) << 7) >> 7) & (255 - (uint8_t)(counter * 65)))  << 16);
-    uint32_t red   = ((uint32_t)((uint8_t)((int8_t)(((components & 0x4) >> 2) << 7) >> 7) & (255 - (uint8_t)(counter * 129))) << 24);
-
-    // Always use full alpha channel.
-    uint32_t finalColor = red | green | blue | 0x000000FF;
-
-    return finalColor;
-};
-
-void rotatePoints(float rotationAngle, std::vector<Vertex2> pointsToRotate, std::vector<Vertex2>& rotatedPoints, Vertex2 originTranslation)
-{
-    // Convert degrees to radians and set the cos and sin values for rotation.
-    double pi = 3.1415926535897;
-
-    // The point after being translated to the native origin.
-    Vertex2 translatedToScreenOrigin;
-
-    // The point after being rotated about the origin.
-    Vertex2 rotatedPoint;
-
-    float radians = (rotationAngle * pi) / 180.0;
-
-    float sinTheta = sin(radians);
-
-    float cosTheta = cos(radians);
-
-    for (size_t i = 0; i < pointsToRotate.size(); i++)
-    {
-        // STEP 1: Translate each value to origin.
-        translatedToScreenOrigin.x = pointsToRotate[i].x;
-        translatedToScreenOrigin.y = pointsToRotate[i].y;
-
-        translatedToScreenOrigin.x -= originTranslation.x;
-        translatedToScreenOrigin.y -= originTranslation.y;
-
-        // STEP 2: Do the actual rotation transform about the native origin.
-        rotatedPoint.x = (translatedToScreenOrigin.x * cosTheta) - (translatedToScreenOrigin.y * sinTheta);
-        rotatedPoint.y = (translatedToScreenOrigin.x * sinTheta) + (translatedToScreenOrigin.y * cosTheta);
-
-        // STEP 3: Translate the vertices back to original position.
-        rotatedPoint.x += originTranslation.x;
-        rotatedPoint.y += originTranslation.y;
-
-        // STEP 4: Set the rotated values into the corners objects.
-        rotatedPoints[i].x = rotatedPoint.x;
-        rotatedPoints[i].y = rotatedPoint.y;
-    }
-}
-
-
-void addQuad(float x, float y, float w, float h, float rotationDegrees, float scale, bool newGroup)
-{
-    if (scale <= 0.0f) {
-        scale = 1.0f;
-    }
-
-    int quadSize = 50 * scale;
-
     int quadHalfWidth = w / 2;
 
     int quadHalfHeight = h / 2;
@@ -189,66 +95,49 @@ void addQuad(float x, float y, float w, float h, float rotationDegrees, float sc
     std::vector<Vertex2> corners;
 
     corners.push_back(Vertex2{ x + screenHalfWidth - quadHalfWidth, y + screenHalfHeight - quadHalfHeight });
-    corners.push_back(Vertex2{ x + screenHalfWidth + quadHalfWidth, corners[0].y                          });
+    corners.push_back(Vertex2{ x + screenHalfWidth + quadHalfWidth, corners[0].y });
     corners.push_back(Vertex2{ corners[1].x,                        y + screenHalfHeight + quadHalfHeight });
-    corners.push_back(Vertex2{ corners[0].x,                        corners[02].y                         });
+    corners.push_back(Vertex2{ corners[0].x,                        corners[02].y });
 
-    std::vector<Vertex2> transformedCorners;
-
-    transformedCorners.resize(4);
 
     // Use an offset to the quad center point, to rotate around the center.
-    Vertex2 originOffset { corners[0].x + quadHalfWidth, corners[0].y + quadHalfHeight };
-
-    rotatePoints(rotationDegrees, corners, transformedCorners, originOffset);
+    Vertex2 originOffset{ corners[0].x + quadHalfWidth, corners[0].y + quadHalfHeight };
 
     // Position
-    vData[0].pos.x = transformedCorners[0].x;
-    vData[0].pos.y = transformedCorners[0].y;
+    vData[0].pos.x = corners[0].x;
+    vData[0].pos.y = corners[0].y;
     vData[0].pos.z = 0.0f;
 
-    vData[1].pos.x = transformedCorners[1].x;
-    vData[1].pos.y = transformedCorners[1].y;
+    vData[1].pos.x = corners[1].x;
+    vData[1].pos.y = corners[1].y;
     vData[1].pos.z = 0.0f;
 
-    vData[2].pos.x = transformedCorners[2].x;
-    vData[2].pos.y = transformedCorners[2].y;
+    vData[2].pos.x = corners[2].x;
+    vData[2].pos.y = corners[2].y;
     vData[2].pos.z = 0.0f;
 
-    vData[3].pos.x = transformedCorners[3].x;
-    vData[3].pos.y = transformedCorners[3].y;
+    vData[3].pos.x = corners[3].x;
+    vData[3].pos.y = corners[3].y;
     vData[3].pos.z = 0.0f;
 
-    // Pick a new color for the new quad group.
-    if (newGroup == true)
-    {
-        colorCounter++;
-
-        uint32_t color = getGroupColor(colorCounter);
-
-        groupColor.r = ((color & 0xFF000000) >> 24) / 255.0f;
-        groupColor.g = ((color & 0x00FF0000) >> 16) / 255.0f;
-        groupColor.b = ((color & 0x0000FF00) >> 8)  / 255.0f;
-    }
-
-    vData[0].color.r = groupColor.r;
-    vData[0].color.g = groupColor.g;
-    vData[0].color.b = groupColor.b;
+    vData[0].color.r = 1.0f;
+    vData[0].color.g = 0.0f;
+    vData[0].color.b = 0.0f;
     vData[0].color.a = 1.0;
 
-    vData[1].color.r = groupColor.r;
-    vData[1].color.g = groupColor.g;
-    vData[1].color.b = groupColor.b;
+    vData[1].color.r = 1.0f;
+    vData[1].color.g = 0.0f;
+    vData[1].color.b = 0.0f;
     vData[1].color.a = 1.0;
 
-    vData[2].color.r = groupColor.r;
-    vData[2].color.g = groupColor.g;
-    vData[2].color.b = groupColor.b;
+    vData[2].color.r = 1.0f;
+    vData[2].color.g = 0.0f;
+    vData[2].color.b = 0.0f;
     vData[2].color.a = 1.0;
 
-    vData[3].color.r = groupColor.r;
-    vData[3].color.g = groupColor.g;
-    vData[3].color.b = groupColor.b;
+    vData[3].color.r = 1.0f;
+    vData[3].color.g = 0.0f;
+    vData[3].color.b = 0.0f;
     vData[3].color.a = 1.0;
 
 
@@ -263,13 +152,6 @@ void addQuad(float x, float y, float w, float h, float rotationDegrees, float sc
     shader.vertexData.push_back(vData[1]);
     shader.vertexData.push_back(vData[2]);
     shader.vertexData.push_back(vData[3]);
-}
-
-void addSquareQuad(float x, float y, float rotationDegrees, float scale, bool newGroup)
-{
-    int quadSize = 50 * scale;
-
-    addQuad(x, y, quadSize, quadSize, rotationDegrees, scale, newGroup);
 }
 
 void freeVbo()
@@ -441,7 +323,7 @@ bool initOpenGl()
     glViewport(0.f, 0.f, screenWidth, screenHeight);
 
     //Initialize clear color
-    glClearColor(0.f, 0.f, 0.f, 1.f);
+    glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
     //Enable texturing
     glEnable(GL_TEXTURE_2D);
@@ -517,48 +399,6 @@ bool initializeScreen()
     return true;
 }
 
-bool initFbo()
-{
-
-    glGenFramebuffers(1, &frameBufferId);
-
-    RETURN_IF_GL_ERROR("glGenFramebuffers");
-
-    glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId);
-
-    RETURN_IF_GL_ERROR("glBindFramebuffer");
-
-    glGenTextures(1, &silhouetteTextureId);
-
-    RETURN_IF_GL_ERROR("glGenTextures");
-
-    glBindTexture(GL_TEXTURE_2D, silhouetteTextureId);
-
-    RETURN_IF_GL_ERROR("glBindTexture");
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-    RETURN_IF_GL_ERROR("glTexImage2D");
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, silhouetteTextureId, 0);
-
-    GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-
-    glDrawBuffers(1, drawBuffers);
-
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    {
-        return false;
-    }
-
-    return true;
-}
-
 bool initVbo()
 {
     if (shader.vertexBufferId == 0)
@@ -625,12 +465,6 @@ bool initShaders()
     //Initialize modelview
     modelViewMatrix = glm::mat4();
     glUniformMatrix4fv(modelViewMatrixLocation, 1, GL_FALSE, glm::value_ptr(modelViewMatrix));
-
-    bool fboInitOk = initFbo();
-
-    if (fboInitOk == false) {
-        return false;
-    }
 
 
     // Initialize the vertex buffer and index buffer objects that
@@ -763,8 +597,8 @@ void updateVbo()
 
 int main(int argc, char* argv[])
 {
-    if (!initializeScreen()) { std::cout << "OpenGL Initialization Failed"  << std::endl; }
-    if (!initShaders())      { std::cout << "Shaders Initialization Failed" << std::endl; }
+    if (!initializeScreen()) { std::cout << "OpenGL Initialization Failed" << std::endl; }
+    if (!initShaders()) { std::cout << "Shaders Initialization Failed" << std::endl; }
 
     bool quit = false;
 
@@ -798,14 +632,14 @@ int main(int argc, char* argv[])
         }
 
         // Reset the group color.
-        colorCounter = 0; 
+        colorCounter = 0;
 
         groupColor.r = 0.0f;
         groupColor.g = 0.0f;
         groupColor.b = 1.0f;
 
-        addQuad (0, 0,  1270, 710, 0, 1, false );
-        
+        addQuad(0, 0, 256, 256);
+
         //addSquareQuad (-100,  100,   0, 2, false );
         //addSquareQuad (   0,    0,   0, 3, false );
         //addSquareQuad ( -48,  -48, -12, 3, true  );
@@ -820,38 +654,10 @@ int main(int argc, char* argv[])
 
         if (vertexCount > 0)
         {
-
-            //glBindFramebuffer(GL_FRAMEBUFFER, 0); // Render to screen
-            glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId); // Render to texture
-
-            // Init the scene.
-            glClearColor(1.0f, 0.8f, 0.0f, 1.0f);
-
-            // Clear color buffer
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glEnable(GL_DEPTH_TEST);
-
-            //glViewport(0, 0, screenWidth, screenHeight); already set
-
-            glUseProgram(shader.programId);
-
-            updateVbo();
-
-            //glActiveTexture(GL_TEXTURE0);
-
-            //glBindTexture(GL_TEXTURE_2D, silhouetteTextureId);
-
-            glBindVertexArray(shader.texturedQuadVao);
-
-            glDrawElements(GL_QUADS, vertexCount, GL_UNSIGNED_INT, NULL);
-
-
-
             glBindFramebuffer(GL_FRAMEBUFFER, 0); // Render to texture
 
             // Init the scene.
-            glClearColor(1.0f, 0.8f, 0.0f, 1.0f);
+            glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
             // Clear color buffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
